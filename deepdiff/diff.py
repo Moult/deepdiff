@@ -46,6 +46,8 @@ class DeepDiff(ResultDict, Base):
     def __init__(self,
                  t1,
                  t2,
+                 terminate_on_first=False,
+                 skip_after_n=False,
                  ignore_order=False,
                  report_repetition=False,
                  significant_digits=None,
@@ -72,6 +74,9 @@ class DeepDiff(ResultDict, Base):
                 "ignore_string_type_changes, ignore_numeric_type_changes, ignore_type_subclasses, "
                 "ignore_nan_inequality, number_to_string_func, verbose_level, view, and hasher.") % ', '.join(kwargs.keys()))
 
+        self.terminate_on_first = terminate_on_first
+        self.skip_after_n = skip_after_n
+        self.total_diffed = 0
         self.ignore_order = ignore_order
         self.ignore_type_in_groups = self.get_ignore_types_in_groups(
             ignore_type_in_groups=ignore_type_in_groups,
@@ -154,6 +159,8 @@ class DeepDiff(ResultDict, Base):
         if not self.__skip_this(level):
             level.report_type = report_type
             self.tree[report_type].add(level)
+            if self.terminate_on_first:
+                raise Exception('Terminating on first')
 
     @staticmethod
     def __dict_from_slots(object):
@@ -604,6 +611,10 @@ class DeepDiff(ResultDict, Base):
 
         if self.__skip_this(level):
             return
+
+        if self.skip_after_n and self.total_diffed > self.skip_after_n:
+            return
+        self.total_diffed += 1
 
         if get_type(level.t1) != get_type(level.t2):
             report_type_change = True
